@@ -9,20 +9,25 @@ import (
 	"net/url"
 )
 
-func RootHandler(w http.ResponseWriter, r *http.Request) {
+type Urls struct {
+	DB storage.Repository
+}
+
+func (urls *Urls) RootHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		GetHandler(w, r)
+		urls.GetHandler(w, r)
 	case http.MethodPost:
-		PostHandler(w, r)
+		urls.PostHandler(w, r)
 	default:
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
 }
 
-func GetHandler(w http.ResponseWriter, r *http.Request) {
+func (urls *Urls) GetHandler(w http.ResponseWriter, r *http.Request) {
 	urlId := r.URL.Path[1:]
-	originalUrl := storage.DB.Find(urlId)
+	originalUrl := urls.DB.Find(urlId)
 
 	if len(originalUrl) > 0 {
 		w.Header().Add("Location", originalUrl)
@@ -32,7 +37,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func PostHandler(w http.ResponseWriter, r *http.Request) {
+func (urls *Urls) PostHandler(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	defer r.Body.Close()
 
@@ -44,7 +49,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	checksum := storage.DB.Save(urlToEncode.String())
+	w.Header().Set(`Content-Type`, `plain/text`)
+	checksum := urls.DB.Save(urlToEncode.String())
 
 	fmt.Fprintf(w, "%s://%s:%s/%s", config.ServerScheme, config.ServerDomain, config.ServerPort, checksum)
 }

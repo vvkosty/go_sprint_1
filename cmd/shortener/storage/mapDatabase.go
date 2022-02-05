@@ -5,29 +5,21 @@ import (
 	"strconv"
 )
 
-var DB *MapDatabase
-
-func init() {
-	if DB == nil {
-		DB = newMapDatabase()
-	}
-}
-
 type MapDatabase struct {
 	urls map[string]string
 }
 
-func newMapDatabase() *MapDatabase {
+func NewMapDatabase() *MapDatabase {
 	var md MapDatabase
 	md.urls = make(map[string]string)
 	return &md
 }
 
-func (m MapDatabase) Find(id string) string {
+func (m *MapDatabase) Find(id string) string {
 	return m.urls[id]
 }
 
-func (m MapDatabase) Save(url string) string {
+func (m *MapDatabase) Save(url string) string {
 	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
 	m.urls[checksum] = url
 
