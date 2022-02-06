@@ -2,55 +2,47 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/vvkosty/go_sprint_1/cmd/shortener/config"
-	"github.com/vvkosty/go_sprint_1/cmd/shortener/storage"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/gin-gonic/gin"
+	"github.com/vvkosty/go_sprint_1/cmd/shortener/config"
+	"github.com/vvkosty/go_sprint_1/cmd/shortener/storage"
 )
 
 type Urls struct {
 	DB storage.Repository
 }
 
-func (urls *Urls) RootHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		urls.GetHandler(w, r)
-	case http.MethodPost:
-		urls.PostHandler(w, r)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
+func (urls *Urls) GetHandler(c *gin.Context) {
+	urlID := c.Param("id")
+	originalURL := urls.DB.Find(urlID)
+
+	if len(originalURL) <= 0 {
+		c.Status(http.StatusBadRequest)
+		return
 	}
+
+	c.Header(`Location`, originalURL)
+	c.Status(http.StatusTemporaryRedirect)
 }
 
-func (urls *Urls) GetHandler(w http.ResponseWriter, r *http.Request) {
-	urlId := r.URL.Path[1:]
-	originalUrl := urls.DB.Find(urlId)
-
-	if len(originalUrl) > 0 {
-		w.Header().Add("Location", originalUrl)
-		w.WriteHeader(http.StatusTemporaryRedirect)
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-}
-
-func (urls *Urls) PostHandler(w http.ResponseWriter, r *http.Request) {
-	body, _ := io.ReadAll(r.Body)
-	defer r.Body.Close()
+func (urls *Urls) PostHandler(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	defer c.Request.Body.Close()
 
 	urlToEncode, err := url.ParseRequestURI(string(body))
 	if err != nil {
 		fmt.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	w.Header().Set(`Content-Type`, `plain/text`)
+	c.Status(http.StatusCreated)
+	c.Header(`Content-Type`, `plain/text`)
 	checksum := urls.DB.Save(urlToEncode.String())
+	responseBody := fmt.Sprintf("%s://%s:%s/%s", config.ServerScheme, config.ServerDomain, config.ServerPort, checksum)
 
-	fmt.Fprintf(w, "%s://%s:%s/%s", config.ServerScheme, config.ServerDomain, config.ServerPort, checksum)
+	c.Writer.Write([]byte(responseBody))
 }
