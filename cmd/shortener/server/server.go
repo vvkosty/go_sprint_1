@@ -12,8 +12,9 @@ import (
 
 func SetupRouter(urlStorage *handlers.Urls) *gin.Engine {
 	r := gin.Default()
-	r.GET("/:id", urlStorage.GetHandler)
-	r.POST("/", urlStorage.PostHandler)
+	r.GET("/:id", urlStorage.GetFullLink)
+	r.POST("/", urlStorage.CreateShortLink)
+	r.POST("/api/shorten", urlStorage.CreateJSONShortLink)
 
 	r.NoRoute(func(c *gin.Context) {
 		c.Status(http.StatusBadRequest)

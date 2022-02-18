@@ -13,7 +13,7 @@ import (
 	"github.com/vvkosty/go_sprint_1/cmd/shortener/storage"
 )
 
-func TestUrls_PostHandler(t *testing.T) {
+func TestUrls_CreateShortLink(t *testing.T) {
 	type want struct {
 		code     int
 		response string
@@ -70,7 +70,7 @@ func TestUrls_PostHandler(t *testing.T) {
 	}
 }
 
-func TestUrls_GetHandler(t *testing.T) {
+func TestUrls_GetFullLink(t *testing.T) {
 	type want struct {
 		code     int
 		response string
@@ -120,6 +120,63 @@ func TestUrls_GetHandler(t *testing.T) {
 
 			require.Equal(t, tt.want.code, res.StatusCode)
 			require.Equal(t, res.Header.Get("Location"), tt.want.response)
+		})
+	}
+}
+
+func TestUrls_CreateJsonShortLink(t *testing.T) {
+	type want struct {
+		code     int
+		response string
+	}
+
+	tests := []struct {
+		name    string
+		request string
+		want    want
+	}{
+		{
+			name:    "OK",
+			request: `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
+			want: want{
+				code:     http.StatusCreated,
+				response: `{"result":"http://localhost:8080/3744865384"}`,
+			},
+		},
+		{
+			name:    "Empty url",
+			request: ``,
+			want: want{
+				code:     http.StatusBadRequest,
+				response: ``,
+			},
+		},
+		{
+			name:    "Incorrect url",
+			request: `test/example.php`,
+			want: want{
+				code:     http.StatusBadRequest,
+				response: ``,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			urls := &handlers.Urls{DB: storage.NewMapDatabase()}
+			router := server.SetupRouter(urls)
+			request := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(tt.request))
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, request)
+			res := w.Result()
+
+			require.Equal(t, tt.want.code, res.StatusCode)
+
+			defer res.Body.Close()
+			resBody, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			require.Equal(t, tt.want.response, string(resBody))
 		})
 	}
 }
