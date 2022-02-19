@@ -1,4 +1,4 @@
-package storage
+package app
 
 import (
 	"hash/crc32"
@@ -9,7 +9,7 @@ type MapDatabase struct {
 	urls map[string]string
 }
 
-func NewMapDatabase() *MapDatabase {
+func NewStorage() *MapDatabase {
 	var md MapDatabase
 	md.urls = make(map[string]string)
 	return &md

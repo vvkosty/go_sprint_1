@@ -1,4 +1,4 @@
-package storage
+package app
 
 type Repository interface {
 	Find(id string) string

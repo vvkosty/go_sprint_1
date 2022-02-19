@@ -1,4 +1,4 @@
-package handlers_test
+package app_test
 
 import (
 	"io"
@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/vvkosty/go_sprint_1/cmd/shortener/handlers"
-	"github.com/vvkosty/go_sprint_1/cmd/shortener/server"
-	"github.com/vvkosty/go_sprint_1/cmd/shortener/storage"
+	"github.com/vvkosty/go_sprint_1/internal/app"
+	config "github.com/vvkosty/go_sprint_1/internal/app/config"
+	handler "github.com/vvkosty/go_sprint_1/internal/app/handlers"
+	storage "github.com/vvkosty/go_sprint_1/internal/app/storage"
 )
 
 func TestUrls_CreateShortLink(t *testing.T) {
@@ -49,10 +50,11 @@ func TestUrls_CreateShortLink(t *testing.T) {
 			},
 		},
 	}
+
+	application := createApp()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			urls := &handlers.Urls{DB: storage.NewMapDatabase()}
-			router := server.SetupRouter(urls)
+			router := application.SetupRouter()
 			request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.request))
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, request)
@@ -106,12 +108,12 @@ func TestUrls_GetFullLink(t *testing.T) {
 			},
 		},
 	}
+
+	application := createApp()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := storage.NewMapDatabase()
-			db.Save("http://example.com/test-url/test1/test2/test.php")
-			urls := &handlers.Urls{DB: db}
-			router := server.SetupRouter(urls)
+			application.Storage.Save("http://example.com/test-url/test1/test2/test.php")
+			router := application.SetupRouter()
 			request := httptest.NewRequest(http.MethodGet, "/"+tt.urlID, nil)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, request)
@@ -160,10 +162,11 @@ func TestUrls_CreateJsonShortLink(t *testing.T) {
 			},
 		},
 	}
+
+	application := createApp()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			urls := &handlers.Urls{DB: storage.NewMapDatabase()}
-			router := server.SetupRouter(urls)
+			router := application.SetupRouter()
 			request := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(tt.request))
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, request)
@@ -179,4 +182,18 @@ func TestUrls_CreateJsonShortLink(t *testing.T) {
 			require.Equal(t, tt.want.response, string(resBody))
 		})
 	}
+}
+
+func createApp() *app.App {
+	var appConfig config.ServerConfig
+	var appHandler handler.Handler
+
+	application := app.App{
+		Config:  &appConfig,
+		Storage: storage.NewStorage(),
+		Handler: &appHandler,
+	}
+	application.Init()
+
+	return &application
 }
