@@ -17,8 +17,6 @@ type App struct {
 }
 
 func (app *App) Init() {
-	app.Config.LoadEnvs()
-
 	app.Handler.Storage = app.Storage
 	app.Handler.Config = app.Config
 }

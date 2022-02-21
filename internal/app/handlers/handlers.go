@@ -30,7 +30,12 @@ type (
 
 func (h *Handler) GetFullLink(c *gin.Context) {
 	urlID := c.Param("id")
-	originalURL := h.Storage.Find(urlID)
+	originalURL, err := h.Storage.Find(urlID)
+	if err != nil {
+		log.Println(err)
+		c.Status(http.StatusBadRequest)
+		return
+	}
 
 	if len(originalURL) <= 0 {
 		c.Status(http.StatusBadRequest)
@@ -54,7 +59,12 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 
 	c.Status(http.StatusCreated)
 	c.Header(`Content-Type`, `plain/text`)
-	checksum := h.Storage.Save(urlToEncode.String())
+	checksum, err := h.Storage.Save(urlToEncode.String())
+	if err != nil {
+		log.Println(err)
+		c.Status(http.StatusBadRequest)
+		return
+	}
 	responseBody := fmt.Sprintf("%s/%s", h.Config.BaseURL, checksum)
 
 	c.Writer.Write([]byte(responseBody))
@@ -73,7 +83,12 @@ func (h *Handler) CreateJSONShortLink(c *gin.Context) {
 
 	c.Status(http.StatusCreated)
 	c.Header(`Content-Type`, gin.MIMEJSON)
-	checksum := h.Storage.Save(requestURL.URL)
+	checksum, err := h.Storage.Save(requestURL.URL)
+	if err != nil {
+		log.Println(err)
+		c.Status(http.StatusBadRequest)
+		return
+	}
 
 	response := responseURL{
 		Result: fmt.Sprintf("%s/%s", h.Config.BaseURL, checksum),

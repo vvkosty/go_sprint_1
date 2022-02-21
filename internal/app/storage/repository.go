@@ -1,6 +1,7 @@
 package app
 
 type Repository interface {
-	Find(id string) string
-	Save(url string) string
+	Find(id string) (string, error)
+	Save(url string) (string, error)
+	Close() error
 }

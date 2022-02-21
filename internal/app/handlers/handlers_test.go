@@ -188,9 +188,11 @@ func createApp() *app.App {
 	var appConfig config.ServerConfig
 	var appHandler handler.Handler
 
+	appConfig.LoadEnvs()
+
 	application := app.App{
 		Config:  &appConfig,
-		Storage: storage.NewStorage(),
+		Storage: storage.NewMapStorage(),
 		Handler: &appHandler,
 	}
 	application.Init()

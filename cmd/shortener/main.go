@@ -11,11 +11,20 @@ func main() {
 	var appConfig config.ServerConfig
 	var appHandler handler.Handler
 
+	appConfig.LoadEnvs()
+
 	application := app.App{
 		Config:  &appConfig,
-		Storage: storage.NewStorage(),
 		Handler: &appHandler,
 	}
+
+	if appConfig.FileStoragePath != "" {
+		application.Storage = storage.NewFileStorage(appConfig.FileStoragePath)
+	} else {
+		application.Storage = storage.NewMapStorage()
+	}
+	defer application.Storage.Close()
+
 	application.Init()
 	application.Start()
 }

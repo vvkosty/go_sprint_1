@@ -9,19 +9,23 @@ type MapDatabase struct {
 	urls map[string]string
 }
 
-func NewStorage() *MapDatabase {
+func NewMapStorage() *MapDatabase {
 	var md MapDatabase
 	md.urls = make(map[string]string)
 	return &md
 }
 
-func (m *MapDatabase) Find(id string) string {
-	return m.urls[id]
+func (m *MapDatabase) Find(id string) (string, error) {
+	return m.urls[id], nil
 }
 
-func (m *MapDatabase) Save(url string) string {
+func (m *MapDatabase) Save(url string) (string, error) {
 	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
 	m.urls[checksum] = url
 
-	return checksum
+	return checksum, nil
+}
+
+func (m *MapDatabase) Close() error {
+	return nil
 }

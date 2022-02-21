@@ -7,8 +7,9 @@ import (
 )
 
 type ServerConfig struct {
-	Address string `env:"SERVER_ADDRESS,notEmpty" envDefault:"localhost:8080"`
-	BaseURL string `env:"BASE_URL,notEmpty" envDefault:"http://localhost:8080"`
+	Address         string `env:"SERVER_ADDRESS,notEmpty" envDefault:"localhost:8080"`
+	BaseURL         string `env:"BASE_URL,notEmpty" envDefault:"http://localhost:8080"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 func (c *ServerConfig) LoadEnvs() {
