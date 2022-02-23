@@ -189,6 +189,7 @@ func createApp() *app.App {
 	var appHandler handler.Handler
 
 	appConfig.LoadEnvs()
+	appConfig.ParseCommandLine()
 
 	application := app.App{
 		Config:  &appConfig,
