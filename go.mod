@@ -3,7 +3,9 @@ module github.com/vvkosty/go_sprint_1
 go 1.17
 
 require (
+	github.com/caarlos0/env/v6 v6.9.1
 	github.com/gin-gonic/gin v1.7.7
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 )
 
