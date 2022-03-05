@@ -11,8 +11,11 @@ import (
 	"github.com/vvkosty/go_sprint_1/internal/app"
 	config "github.com/vvkosty/go_sprint_1/internal/app/config"
 	handler "github.com/vvkosty/go_sprint_1/internal/app/handlers"
+	"github.com/vvkosty/go_sprint_1/internal/app/helpers"
 	storage "github.com/vvkosty/go_sprint_1/internal/app/storage"
 )
+
+var gzipHelper = helpers.GzipHelper{}
 
 func TestUrls_CreateShortLink(t *testing.T) {
 	type want struct {
@@ -180,6 +183,95 @@ func TestUrls_CreateJsonShortLink(t *testing.T) {
 				t.Fatal(err)
 			}
 			require.Equal(t, tt.want.response, string(resBody))
+		})
+	}
+}
+
+func TestUrls_CheckGZIPHeaders(t *testing.T) {
+	type want struct {
+		code     int
+		response string
+	}
+
+	tests := []struct {
+		name                 string
+		requestBody          string
+		isCompressRequest    bool
+		isDecompressResponse bool
+		want                 want
+	}{
+		{
+			name:                 "OK with full compress",
+			requestBody:          `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
+			isCompressRequest:    true,
+			isDecompressResponse: true,
+			want: want{
+				code:     http.StatusCreated,
+				response: `{"result":"http://localhost:8080/3744865384"}`,
+			},
+		},
+		{
+			name:                 "OK with response compress",
+			requestBody:          `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
+			isCompressRequest:    false,
+			isDecompressResponse: true,
+			want: want{
+				code:     http.StatusCreated,
+				response: `{"result":"http://localhost:8080/3744865384"}`,
+			},
+		},
+		{
+			name:                 "OK with request compress",
+			requestBody:          `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
+			isCompressRequest:    true,
+			isDecompressResponse: false,
+			want: want{
+				code:     http.StatusCreated,
+				response: `{"result":"http://localhost:8080/3744865384"}`,
+			},
+		},
+		{
+			name:                 "OK without request compress",
+			requestBody:          `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
+			isCompressRequest:    false,
+			isDecompressResponse: false,
+			want: want{
+				code:     http.StatusCreated,
+				response: `{"result":"http://localhost:8080/3744865384"}`,
+			},
+		},
+	}
+
+	application := createApp()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := application.SetupRouter()
+
+			requestBody := tt.requestBody
+			if tt.isCompressRequest {
+				compressedRequest, _ := gzipHelper.Compress([]byte(tt.requestBody))
+				requestBody = string(compressedRequest)
+			}
+
+			request := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(requestBody))
+
+			if tt.isCompressRequest {
+				request.Header.Set("Content-Encoding", "gzip")
+			}
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, request)
+			res := w.Result()
+
+			require.Equal(t, tt.want.code, res.StatusCode)
+
+			defer res.Body.Close()
+			responseBody, _ := io.ReadAll(res.Body)
+			if tt.isDecompressResponse {
+				responseBody, _ = gzipHelper.Decompress(responseBody)
+			}
+
+			require.Equal(t, tt.want.response, string(responseBody))
 		})
 	}
 }
