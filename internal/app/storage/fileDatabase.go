@@ -50,13 +50,26 @@ func (fd *FileDatabase) Find(id string) (string, error) {
 	return result, nil
 }
 
-func (fd *FileDatabase) Save(url string) (string, error) {
+func (fd *FileDatabase) Save(url string, userId string) (string, error) {
 	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
-	if _, err := fd.writer.WriteString(checksum + delimiter + url + "\n"); err != nil {
+	if _, err := fd.writer.WriteString(checksum + delimiter + url + delimiter + userId + "\n"); err != nil {
 		return "", err
 	}
 
 	return checksum, fd.writer.Flush()
+}
+
+func (fd *FileDatabase) List(userId string) map[string]string {
+	result := make(map[string]string)
+	fd.urls.Seek(0, io.SeekStart)
+	for fd.scanner.Scan() {
+		url := strings.Split(fd.scanner.Text(), delimiter)
+		if userId == url[2] {
+			result[url[0]] = url[1]
+		}
+	}
+
+	return result
 }
 
 func (fd *FileDatabase) Close() error {

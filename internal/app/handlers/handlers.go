@@ -26,6 +26,11 @@ type (
 	responseURL struct {
 		Result string `json:"result"`
 	}
+
+	listURL struct {
+		ShortURL    string `json:"short_url"`
+		OriginalURL string `json:"original_url"`
+	}
 )
 
 func (h *Handler) GetFullLink(c *gin.Context) {
@@ -59,7 +64,8 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 
 	c.Status(http.StatusCreated)
 	c.Header(`Content-Type`, `plain/text`)
-	checksum, err := h.Storage.Save(urlToEncode.String())
+	userId, _ := c.Get("userId")
+	checksum, err := h.Storage.Save(urlToEncode.String(), userId.(string))
 	if err != nil {
 		log.Println(err)
 		c.Status(http.StatusBadRequest)
@@ -83,7 +89,8 @@ func (h *Handler) CreateJSONShortLink(c *gin.Context) {
 
 	c.Status(http.StatusCreated)
 	c.Header(`Content-Type`, gin.MIMEJSON)
-	checksum, err := h.Storage.Save(requestURL.URL)
+	userId, _ := c.Get("userId")
+	checksum, err := h.Storage.Save(requestURL.URL, userId.(string))
 	if err != nil {
 		log.Println(err)
 		c.Status(http.StatusBadRequest)
@@ -101,5 +108,32 @@ func (h *Handler) CreateJSONShortLink(c *gin.Context) {
 		return
 	}
 
+	c.Writer.Write(encodedResponse)
+}
+
+func (h *Handler) GetAllLinks(c *gin.Context) {
+	var response []listURL
+	userId, _ := c.Get("userId")
+
+	for checksum, originalURL := range h.Storage.List(userId.(string)) {
+		response = append(response, listURL{
+			ShortURL:    fmt.Sprintf("%s/%s", h.Config.BaseURL, checksum),
+			OriginalURL: originalURL,
+		})
+	}
+
+	if len(response) == 0 {
+		c.Status(http.StatusNoContent)
+		return
+	}
+
+	encodedResponse, err := json.Marshal(&response)
+	if err != nil {
+		log.Println(err)
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	c.Header(`Content-Type`, gin.MIMEJSON)
 	c.Writer.Write(encodedResponse)
 }

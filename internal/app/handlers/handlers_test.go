@@ -12,6 +12,7 @@ import (
 	config "github.com/vvkosty/go_sprint_1/internal/app/config"
 	handler "github.com/vvkosty/go_sprint_1/internal/app/handlers"
 	"github.com/vvkosty/go_sprint_1/internal/app/helpers"
+	middleware "github.com/vvkosty/go_sprint_1/internal/app/middlewares"
 	storage "github.com/vvkosty/go_sprint_1/internal/app/storage"
 )
 
@@ -115,7 +116,7 @@ func TestUrls_GetFullLink(t *testing.T) {
 	application := createApp()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			application.Storage.Save("http://example.com/test-url/test1/test2/test.php")
+			application.Storage.Save("http://example.com/test-url/test1/test2/test.php", "test123")
 			router := application.SetupRouter()
 			request := httptest.NewRequest(http.MethodGet, "/"+tt.urlID, nil)
 			w := httptest.NewRecorder()
@@ -258,6 +259,9 @@ func TestUrls_CheckGZIPHeaders(t *testing.T) {
 			if tt.isCompressRequest {
 				request.Header.Set("Content-Encoding", "gzip")
 			}
+			if tt.isDecompressResponse {
+				request.Header.Set("Accept-Encoding", "gzip")
+			}
 
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, request)
@@ -279,14 +283,16 @@ func TestUrls_CheckGZIPHeaders(t *testing.T) {
 func createApp() *app.App {
 	var appConfig config.ServerConfig
 	var appHandler handler.Handler
+	var appMiddleware middleware.Middleware
 
 	appConfig.LoadEnvs()
 	appConfig.ParseCommandLine()
 
 	application := app.App{
-		Config:  &appConfig,
-		Storage: storage.NewMapStorage(),
-		Handler: &appHandler,
+		Config:     &appConfig,
+		Storage:    storage.NewMapStorage(),
+		Handler:    &appHandler,
+		Middleware: &appMiddleware,
 	}
 	application.Init()
 
