@@ -8,9 +8,11 @@ import (
 )
 
 type ServerConfig struct {
+	Host            string `env:"HOST" envDefault:"localhost"`
 	Address         string `env:"SERVER_ADDRESS,notEmpty" envDefault:"localhost:8080"`
 	BaseURL         string `env:"BASE_URL,notEmpty" envDefault:"http://localhost:8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDsn     string `env:"DATABASE_DSN" envDefault:"postgres://yandex:p12300@localhost:5432/yandex"`
 }
 
 func (c *ServerConfig) LoadEnvs() {
@@ -28,6 +30,9 @@ func (c *ServerConfig) ParseCommandLine() {
 	}
 	if flag.Lookup("f") == nil {
 		flag.StringVarP(&c.FileStoragePath, "f", "f", c.FileStoragePath, "-f /tmp/filename.tmp")
+	}
+	if flag.Lookup("d") == nil {
+		flag.StringVarP(&c.DatabaseDsn, "d", "d", c.DatabaseDsn, "-d db_driver://user:pass@domain:port/db_name")
 	}
 
 	flag.Parse()

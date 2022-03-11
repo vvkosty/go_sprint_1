@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+  postgres_db:
+    image: postgres:11.7
+    volumes:
+      - "/var/run/postgres/postgres.sock:/var/run/postgres/postgres.sock"
+    environment:
+      POSTGRES_USER: "yandex"
+      POSTGRES_PASSWORD: "p12300"
+    ports:
+      - "5432:5432"

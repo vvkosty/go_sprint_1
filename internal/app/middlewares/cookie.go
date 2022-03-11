@@ -36,7 +36,7 @@ func (m *Middleware) SetCookie(c *gin.Context) {
 			Name:     "user",
 			Value:    newCookie,
 			Path:     "/",
-			Domain:   m.Config.Address,
+			Domain:   m.Config.Host,
 			MaxAge:   3600,
 			Secure:   false,
 			HttpOnly: false,
@@ -55,7 +55,7 @@ func (m *Middleware) SetCookie(c *gin.Context) {
 		authCookie.Value,
 		3600,
 		"/",
-		m.Config.Address,
+		m.Config.Host,
 		false,
 		false,
 	)

@@ -1,14 +1,19 @@
 package app
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	config "github.com/vvkosty/go_sprint_1/internal/app/config"
 	storage "github.com/vvkosty/go_sprint_1/internal/app/storage"
 )
@@ -136,4 +141,20 @@ func (h *Handler) GetAllLinks(c *gin.Context) {
 
 	c.Header(`Content-Type`, gin.MIMEJSON)
 	c.Writer.Write(encodedResponse)
+}
+
+func (h *Handler) Ping(c *gin.Context) {
+	var ctx context.Context
+	db, err := sql.Open("pgx", h.Config.DatabaseDsn)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		panic(err)
+	}
 }

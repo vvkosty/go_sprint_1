@@ -44,6 +44,7 @@ func (app *App) SetupRouter() *gin.Engine {
 	r.POST("/", app.Handler.CreateShortLink)
 	r.POST("/api/shorten", app.Handler.CreateJSONShortLink)
 	r.GET("/api/user/urls", app.Handler.GetAllLinks)
+	r.GET("/ping", app.Handler.Ping)
 
 	r.NoRoute(func(c *gin.Context) {
 		c.Status(http.StatusBadRequest)
