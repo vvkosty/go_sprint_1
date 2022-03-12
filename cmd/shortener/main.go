@@ -22,7 +22,9 @@ func main() {
 		Middleware: &appMiddleware,
 	}
 
-	if appConfig.FileStoragePath != "" {
+	if appConfig.DatabaseDsn != "" {
+		application.Storage = storage.NewPostgresDatabase(appConfig.DatabaseDsn)
+	} else if appConfig.FileStoragePath != "" {
 		application.Storage = storage.NewFileStorage(appConfig.FileStoragePath)
 	} else {
 		application.Storage = storage.NewMapStorage()
