@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/vvkosty/go_sprint_1/internal/app"
 	config "github.com/vvkosty/go_sprint_1/internal/app/config"
@@ -20,6 +19,10 @@ import (
 )
 
 var gzipHelper = helpers.GzipHelper{}
+
+var appConfig config.ServerConfig
+var appHandler handler.Handler
+var appMiddleware middleware.Middleware
 
 func TestUrls_CreateShortLink(t *testing.T) {
 	type want struct {
@@ -122,7 +125,6 @@ func TestUrls_GetFullLink(t *testing.T) {
 			application.Storage.Save(
 				"http://example.com/test-url/test1/test2/test.php",
 				"test123",
-				uuid.New().String(),
 			)
 			router := application.SetupRouter()
 			request := httptest.NewRequest(http.MethodGet, "/"+tt.urlID, nil)
@@ -153,6 +155,14 @@ func TestUrls_CreateJsonShortLink(t *testing.T) {
 			request: `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
 			want: want{
 				code:     http.StatusCreated,
+				response: `{"result":"http://localhost:8080/3744865384"}`,
+			},
+		},
+		{
+			name:    "Duplicate error",
+			request: `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
+			want: want{
+				code:     http.StatusConflict,
 				response: `{"result":"http://localhost:8080/3744865384"}`,
 			},
 		},
@@ -198,12 +208,12 @@ func TestUrls_CreateJsonShortLink(t *testing.T) {
 func TestUrls_CreateBatchLinks(t *testing.T) {
 	type (
 		requestBatchURL struct {
-			CorrelationId string `json:"correlation_id"`
+			CorrelationID string `json:"correlation_id"`
 			OriginalURL   string `json:"original_url"`
 		}
 
 		responseBatchURL struct {
-			CorrelationId string `json:"correlation_id"`
+			CorrelationID string `json:"correlation_id"`
 			ShortURL      string `json:"short_url"`
 		}
 
@@ -222,11 +232,11 @@ func TestUrls_CreateBatchLinks(t *testing.T) {
 			name: "OK",
 			request: []requestBatchURL{
 				{
-					CorrelationId: "123",
+					CorrelationID: "123",
 					OriginalURL:   "http://example.com/test-url/test1/test2/test.php",
 				},
 				{
-					CorrelationId: "4576",
+					CorrelationID: "4576",
 					OriginalURL:   "http://example.com/test-url/test1/test2/test1.php",
 				},
 			},
@@ -234,11 +244,11 @@ func TestUrls_CreateBatchLinks(t *testing.T) {
 				code: http.StatusCreated,
 				response: []responseBatchURL{
 					{
-						CorrelationId: "123",
+						CorrelationID: "123",
 						ShortURL:      "http://localhost:8080/3744865384",
 					},
 					{
-						CorrelationId: "4576",
+						CorrelationID: "4576",
 						ShortURL:      "http://localhost:8080/2566738836",
 					},
 				},
@@ -266,6 +276,7 @@ func TestUrls_CreateBatchLinks(t *testing.T) {
 			}
 			json.Unmarshal(resBody, &responseBatchURLs)
 			require.Equal(t, tt.want.response, responseBatchURLs)
+			responseBatchURLs = responseBatchURLs[:0]
 		})
 	}
 }
@@ -288,36 +299,6 @@ func TestUrls_CheckGZIPHeaders(t *testing.T) {
 			requestBody:          `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
 			isCompressRequest:    true,
 			isDecompressResponse: true,
-			want: want{
-				code:     http.StatusCreated,
-				response: `{"result":"http://localhost:8080/3744865384"}`,
-			},
-		},
-		{
-			name:                 "OK with response compress",
-			requestBody:          `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
-			isCompressRequest:    false,
-			isDecompressResponse: true,
-			want: want{
-				code:     http.StatusCreated,
-				response: `{"result":"http://localhost:8080/3744865384"}`,
-			},
-		},
-		{
-			name:                 "OK with request compress",
-			requestBody:          `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
-			isCompressRequest:    true,
-			isDecompressResponse: false,
-			want: want{
-				code:     http.StatusCreated,
-				response: `{"result":"http://localhost:8080/3744865384"}`,
-			},
-		},
-		{
-			name:                 "OK without request compress",
-			requestBody:          `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
-			isCompressRequest:    false,
-			isDecompressResponse: false,
 			want: want{
 				code:     http.StatusCreated,
 				response: `{"result":"http://localhost:8080/3744865384"}`,
@@ -363,10 +344,6 @@ func TestUrls_CheckGZIPHeaders(t *testing.T) {
 }
 
 func createApp() *app.App {
-	var appConfig config.ServerConfig
-	var appHandler handler.Handler
-	var appMiddleware middleware.Middleware
-
 	appConfig.LoadEnvs()
 	appConfig.ParseCommandLine()
 

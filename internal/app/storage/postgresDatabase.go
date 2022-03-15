@@ -2,16 +2,38 @@ package app
 
 import (
 	"database/sql"
-	"hash/crc32"
+	"fmt"
 	"log"
 	"os"
-	"strconv"
+	"strings"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/vvkosty/go_sprint_1/internal/app/helpers"
 )
 
-type PostgresDatabase struct {
-	db *sql.DB
+type (
+	PostgresDatabase struct {
+		db *sql.DB
+	}
+
+	URLEntity struct {
+		CorrelationID string
+		ShortURLID    string
+		UserID        string
+		FullURL       string
+	}
+)
+
+type UniqueViolatesError struct{ Err error }
+
+func (uve *UniqueViolatesError) Error() string {
+	return fmt.Sprintf("UniqueViolatesError: %v", uve.Err)
+}
+
+func NewUniqueViolatesError(err error) error {
+	return &UniqueViolatesError{
+		Err: err,
+	}
 }
 
 func NewPostgresDatabase(dsn string) *PostgresDatabase {
@@ -26,10 +48,9 @@ func NewPostgresDatabase(dsn string) *PostgresDatabase {
 
 	query := `
 		CREATE TABLE IF NOT EXISTS urls(
-		    correlation_id varchar(50) PRIMARY KEY,
-			short_url_id varchar(50) NOT NULL,
+			short_url_id varchar(50) PRIMARY KEY,
 			user_id varchar(50) NOT NULL,
-			full_url varchar(50) NOT NULL
+			full_url varchar(255) NOT NULL
 		)`
 	_, err = md.db.Exec(query)
 	if err != nil {
@@ -52,41 +73,44 @@ func (m *PostgresDatabase) Find(id string) (string, error) {
 	return url, nil
 }
 
-func (m *PostgresDatabase) Save(url string, userId string, correlationId string) (string, error) {
-	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
+func (m *PostgresDatabase) Save(url string, userID string) (string, error) {
+	checksum := helpers.GenerateChecksum(url)
 
 	_, err := m.db.Exec(
-		"INSERT INTO urls (short_url_id, user_id, full_url, correlation_id) VALUES ($1, $2, $3, $4)",
+		"INSERT INTO urls (short_url_id, user_id, full_url) VALUES ($1, $2, $3)",
 		checksum,
-		userId,
+		userID,
 		url,
-		correlationId,
 	)
+
 	if err != nil {
+		if strings.Contains(err.Error(), "23505") {
+			return checksum, NewUniqueViolatesError(err)
+		}
 		return "", err
 	}
 
 	return checksum, nil
 }
 
-func (m *PostgresDatabase) List(userId string) map[string]string {
-	var fullUrl string
-	var shortUrlId string
+func (m *PostgresDatabase) List(userID string) map[string]string {
+	var fullURL string
+	var shortURLID string
 
 	result := make(map[string]string)
 
-	rows, err := m.db.Query("SELECT full_url, short_url_id FROM urls WHERE user_id = $1", userId)
+	rows, err := m.db.Query("SELECT full_url, short_url_id FROM urls WHERE user_id = $1", userID)
 	if err != nil {
 		return result
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&fullUrl, &shortUrlId)
+		err := rows.Scan(&fullURL, &shortURLID)
 		if err != nil {
 			return result
 		}
 
-		result[shortUrlId] = fullUrl
+		result[shortURLID] = fullURL
 	}
 	err = rows.Err()
 	if err != nil {

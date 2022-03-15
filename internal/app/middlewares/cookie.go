@@ -20,13 +20,13 @@ type Middleware struct {
 }
 
 func (m *Middleware) SetCookie(c *gin.Context) {
-	var userId string
+	var userID string
 	var err error
 
 	authCookie, _ := c.Request.Cookie("user")
 	if authCookie == nil {
-		userId = uuid.NewString()
-		newCookie, err := m.encrypt(userId)
+		userID = uuid.NewString()
+		newCookie, err := m.encrypt(userID)
 		if err != nil {
 			log.Println(err)
 			return
@@ -43,7 +43,7 @@ func (m *Middleware) SetCookie(c *gin.Context) {
 		}
 		c.Request.AddCookie(authCookie)
 	} else {
-		userId, err = m.decrypt([]byte(authCookie.Value))
+		userID, err = m.decrypt([]byte(authCookie.Value))
 		if err != nil {
 			log.Println(err)
 			return
@@ -60,7 +60,7 @@ func (m *Middleware) SetCookie(c *gin.Context) {
 		false,
 	)
 
-	c.Set("userId", userId)
+	c.Set("userId", userID)
 
 	c.Next()
 }
@@ -108,13 +108,10 @@ func (m *Middleware) decrypt(value []byte) (string, error) {
 	nonce, cipherText := decodedValue[:aesgcm.NonceSize()], decodedValue[aesgcm.NonceSize():]
 
 	// расшифровываем
-	if err != nil {
-		return "", err
-	}
-	userId, err := aesgcm.Open(nil, nonce, cipherText, nil)
+	userID, err := aesgcm.Open(nil, nonce, cipherText, nil)
 	if err != nil {
 		return "", err
 	}
 
-	return string(userId), nil
+	return string(userID), nil
 }

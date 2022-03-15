@@ -1,8 +1,7 @@
 package app
 
 import (
-	"hash/crc32"
-	"strconv"
+	"github.com/vvkosty/go_sprint_1/internal/app/helpers"
 )
 
 type MapDatabase struct {
@@ -21,18 +20,18 @@ func (m *MapDatabase) Find(id string) (string, error) {
 	return m.urls[id], nil
 }
 
-func (m *MapDatabase) Save(url string, userId string, correlationId string) (string, error) {
-	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
+func (m *MapDatabase) Save(url string, userID string) (string, error) {
+	checksum := helpers.GenerateChecksum(url)
 	m.urls[checksum] = url
-	m.usersUrls[userId] = append(m.usersUrls[userId], checksum)
+	m.usersUrls[userID] = append(m.usersUrls[userID], checksum)
 
 	return checksum, nil
 }
 
-func (m *MapDatabase) List(userId string) map[string]string {
+func (m *MapDatabase) List(userID string) map[string]string {
 	result := make(map[string]string)
 
-	if urls, found := m.usersUrls[userId]; found {
+	if urls, found := m.usersUrls[userID]; found {
 		for _, checksum := range urls {
 			result[checksum] = m.urls[checksum]
 		}
