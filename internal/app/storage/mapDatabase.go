@@ -21,7 +21,7 @@ func (m *MapDatabase) Find(id string) (string, error) {
 	return m.urls[id], nil
 }
 
-func (m *MapDatabase) Save(url string, userId string) (string, error) {
+func (m *MapDatabase) Save(url string, userId string, correlationId string) (string, error) {
 	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
 	m.urls[checksum] = url
 	m.usersUrls[userId] = append(m.usersUrls[userId], checksum)

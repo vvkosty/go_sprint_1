@@ -26,7 +26,8 @@ func NewPostgresDatabase(dsn string) *PostgresDatabase {
 
 	query := `
 		CREATE TABLE IF NOT EXISTS urls(
-			short_url_id varchar(50) PRIMARY KEY,
+		    correlation_id varchar(50) PRIMARY KEY,
+			short_url_id varchar(50) NOT NULL,
 			user_id varchar(50) NOT NULL,
 			full_url varchar(50) NOT NULL
 		)`
@@ -51,10 +52,16 @@ func (m *PostgresDatabase) Find(id string) (string, error) {
 	return url, nil
 }
 
-func (m *PostgresDatabase) Save(url string, userId string) (string, error) {
+func (m *PostgresDatabase) Save(url string, userId string, correlationId string) (string, error) {
 	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
 
-	_, err := m.db.Exec("INSERT INTO urls (short_url_id, user_id, full_url) VALUES ($1, $2, $3)", checksum, userId, url)
+	_, err := m.db.Exec(
+		"INSERT INTO urls (short_url_id, user_id, full_url, correlation_id) VALUES ($1, $2, $3, $4)",
+		checksum,
+		userId,
+		url,
+		correlationId,
+	)
 	if err != nil {
 		return "", err
 	}

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	config "github.com/vvkosty/go_sprint_1/internal/app/config"
 	storage "github.com/vvkosty/go_sprint_1/internal/app/storage"
@@ -35,6 +36,16 @@ type (
 	listURL struct {
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
+	}
+
+	requestBatchURL struct {
+		CorrelationId string `json:"correlation_id"`
+		OriginalURL   string `json:"original_url"`
+	}
+
+	responseBatchURL struct {
+		CorrelationId string `json:"correlation_id"`
+		ShortURL      string `json:"short_url"`
 	}
 )
 
@@ -70,7 +81,7 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 	c.Status(http.StatusCreated)
 	c.Header(`Content-Type`, `plain/text`)
 	userId, _ := c.Get("userId")
-	checksum, err := h.Storage.Save(urlToEncode.String(), userId.(string))
+	checksum, err := h.Storage.Save(urlToEncode.String(), userId.(string), uuid.New().String())
 	if err != nil {
 		log.Println(err)
 		c.Status(http.StatusBadRequest)
@@ -95,7 +106,7 @@ func (h *Handler) CreateJSONShortLink(c *gin.Context) {
 	c.Status(http.StatusCreated)
 	c.Header(`Content-Type`, gin.MIMEJSON)
 	userId, _ := c.Get("userId")
-	checksum, err := h.Storage.Save(requestURL.URL, userId.(string))
+	checksum, err := h.Storage.Save(requestURL.URL, userId.(string), uuid.New().String())
 	if err != nil {
 		log.Println(err)
 		c.Status(http.StatusBadRequest)
@@ -157,4 +168,45 @@ func (h *Handler) Ping(c *gin.Context) {
 	if err := db.PingContext(ctx); err != nil {
 		panic(err)
 	}
+}
+
+func (h *Handler) CreateBatchLinks(c *gin.Context) {
+	var requestBatchURLs []requestBatchURL
+	var responseBatchURLs []responseBatchURL
+
+	body, _ := io.ReadAll(c.Request.Body)
+	defer c.Request.Body.Close()
+
+	if err := json.Unmarshal(body, &requestBatchURLs); err != nil {
+		log.Println(err)
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	c.Header(`Content-Type`, gin.MIMEJSON)
+
+	for _, requestUrl := range requestBatchURLs {
+		userId, _ := c.Get("userId")
+		checksum, err := h.Storage.Save(requestUrl.OriginalURL, userId.(string), requestUrl.CorrelationId)
+		if err != nil {
+			log.Println(err)
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		responseBatchURLs = append(responseBatchURLs, responseBatchURL{
+			ShortURL:      fmt.Sprintf("%s/%s", h.Config.BaseURL, checksum),
+			CorrelationId: requestUrl.CorrelationId,
+		})
+	}
+
+	encodedResponse, err := json.Marshal(&responseBatchURLs)
+	if err != nil {
+		log.Println(err)
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	c.Status(http.StatusCreated)
+	c.Writer.Write(encodedResponse)
 }

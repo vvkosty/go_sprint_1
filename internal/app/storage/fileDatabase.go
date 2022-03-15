@@ -50,7 +50,7 @@ func (fd *FileDatabase) Find(id string) (string, error) {
 	return result, nil
 }
 
-func (fd *FileDatabase) Save(url string, userId string) (string, error) {
+func (fd *FileDatabase) Save(url string, userId string, correlationId string) (string, error) {
 	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
 	if _, err := fd.writer.WriteString(checksum + delimiter + url + delimiter + userId + "\n"); err != nil {
 		return "", err

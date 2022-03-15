@@ -1,12 +1,15 @@
 package app_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/vvkosty/go_sprint_1/internal/app"
 	config "github.com/vvkosty/go_sprint_1/internal/app/config"
@@ -116,7 +119,11 @@ func TestUrls_GetFullLink(t *testing.T) {
 	application := createApp()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			application.Storage.Save("http://example.com/test-url/test1/test2/test.php", "test123")
+			application.Storage.Save(
+				"http://example.com/test-url/test1/test2/test.php",
+				"test123",
+				uuid.New().String(),
+			)
 			router := application.SetupRouter()
 			request := httptest.NewRequest(http.MethodGet, "/"+tt.urlID, nil)
 			w := httptest.NewRecorder()
@@ -184,6 +191,81 @@ func TestUrls_CreateJsonShortLink(t *testing.T) {
 				t.Fatal(err)
 			}
 			require.Equal(t, tt.want.response, string(resBody))
+		})
+	}
+}
+
+func TestUrls_CreateBatchLinks(t *testing.T) {
+	type (
+		requestBatchURL struct {
+			CorrelationId string `json:"correlation_id"`
+			OriginalURL   string `json:"original_url"`
+		}
+
+		responseBatchURL struct {
+			CorrelationId string `json:"correlation_id"`
+			ShortURL      string `json:"short_url"`
+		}
+
+		want struct {
+			code     int
+			response []responseBatchURL
+		}
+	)
+
+	tests := []struct {
+		name    string
+		request []requestBatchURL
+		want    want
+	}{
+		{
+			name: "OK",
+			request: []requestBatchURL{
+				{
+					CorrelationId: "123",
+					OriginalURL:   "http://example.com/test-url/test1/test2/test.php",
+				},
+				{
+					CorrelationId: "4576",
+					OriginalURL:   "http://example.com/test-url/test1/test2/test1.php",
+				},
+			},
+			want: want{
+				code: http.StatusCreated,
+				response: []responseBatchURL{
+					{
+						CorrelationId: "123",
+						ShortURL:      "http://localhost:8080/3744865384",
+					},
+					{
+						CorrelationId: "4576",
+						ShortURL:      "http://localhost:8080/2566738836",
+					},
+				},
+			},
+		},
+	}
+
+	var responseBatchURLs []responseBatchURL
+	application := createApp()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := application.SetupRouter()
+			requestParams, _ := json.Marshal(tt.request)
+			request := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewReader(requestParams))
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, request)
+			res := w.Result()
+
+			require.Equal(t, tt.want.code, res.StatusCode)
+
+			defer res.Body.Close()
+			resBody, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			json.Unmarshal(resBody, &responseBatchURLs)
+			require.Equal(t, tt.want.response, responseBatchURLs)
 		})
 	}
 }
