@@ -2,12 +2,12 @@ package app
 
 import (
 	"bufio"
-	"hash/crc32"
 	"io"
 	"log"
 	"os"
-	"strconv"
 	"strings"
+
+	"github.com/vvkosty/go_sprint_1/internal/app/helpers"
 )
 
 const delimiter = "|"
@@ -50,13 +50,26 @@ func (fd *FileDatabase) Find(id string) (string, error) {
 	return result, nil
 }
 
-func (fd *FileDatabase) Save(url string) (string, error) {
-	checksum := strconv.Itoa(int(crc32.ChecksumIEEE([]byte(url))))
-	if _, err := fd.writer.WriteString(checksum + delimiter + url + "\n"); err != nil {
+func (fd *FileDatabase) Save(url string, userID string) (string, error) {
+	checksum := helpers.GenerateChecksum(url)
+	if _, err := fd.writer.WriteString(checksum + delimiter + url + delimiter + userID + "\n"); err != nil {
 		return "", err
 	}
 
 	return checksum, fd.writer.Flush()
+}
+
+func (fd *FileDatabase) List(userID string) map[string]string {
+	result := make(map[string]string)
+	fd.urls.Seek(0, io.SeekStart)
+	for fd.scanner.Scan() {
+		url := strings.Split(fd.scanner.Text(), delimiter)
+		if userID == url[2] {
+			result[url[0]] = url[1]
+		}
+	}
+
+	return result
 }
 
 func (fd *FileDatabase) Close() error {
