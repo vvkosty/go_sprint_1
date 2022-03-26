@@ -53,9 +53,14 @@ type (
 var err error
 
 func (h *Handler) GetFullLink(c *gin.Context) {
+	var entityDeletedError *storage.EntityDeletedError
 	urlID := c.Param("id")
 	originalURL, err := h.Storage.Find(urlID)
 	if err != nil {
+		if errors.As(err, &entityDeletedError) {
+			c.Status(http.StatusGone)
+			return
+		}
 		log.Println(err)
 		c.Status(http.StatusBadRequest)
 		return
@@ -230,4 +235,15 @@ func (h *Handler) CreateBatchLinks(c *gin.Context) {
 
 	c.Status(http.StatusCreated)
 	c.Writer.Write(encodedResponse)
+}
+
+func (h *Handler) DeleteBatchLinks(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	defer c.Request.Body.Close()
+
+	var checksums []string
+	json.Unmarshal(body, &checksums)
+
+	go h.Storage.DeleteBatchByChecksums(checksums)
+	c.Status(http.StatusAccepted)
 }

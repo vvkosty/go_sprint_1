@@ -46,6 +46,7 @@ func (app *App) SetupRouter() *gin.Engine {
 	r.GET("/api/user/urls", app.Handler.GetAllLinks)
 	r.GET("/ping", app.Handler.Ping)
 	r.POST("/api/shorten/batch", app.Handler.CreateBatchLinks)
+	r.DELETE("/api/user/urls", app.Handler.DeleteBatchLinks)
 
 	r.NoRoute(func(c *gin.Context) {
 		c.Status(http.StatusBadRequest)

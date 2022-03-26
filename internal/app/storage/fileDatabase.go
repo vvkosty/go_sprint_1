@@ -72,6 +72,10 @@ func (fd *FileDatabase) List(userID string) map[string]string {
 	return result
 }
 
+func (fd *FileDatabase) DeleteBatchByChecksums(checksums []string) error {
+	return nil
+}
+
 func (fd *FileDatabase) Close() error {
 	return fd.urls.Close()
 }

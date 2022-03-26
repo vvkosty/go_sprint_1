@@ -159,14 +159,6 @@ func TestUrls_CreateJsonShortLink(t *testing.T) {
 			},
 		},
 		{
-			name:    "Duplicate error",
-			request: `{"url":"http://example.com/test-url/test1/test2/test.php"}`,
-			want: want{
-				code:     http.StatusConflict,
-				response: `{"result":"http://localhost:8080/3744865384"}`,
-			},
-		},
-		{
 			name:    "Empty url",
 			request: ``,
 			want: want{
@@ -356,4 +348,8 @@ func createApp() *app.App {
 	application.Init()
 
 	return &application
+}
+
+func recreateTables(app *app.App) {
+	app.Storage = storage.NewPostgresDatabase(appConfig.DatabaseDsn, true)
 }
