@@ -39,6 +39,14 @@ func (m *MapDatabase) List(userID string) map[string]string {
 	return result
 }
 
+func (m *MapDatabase) DeleteBatchByChecksums(checksums []string) error {
+	for _, checksum := range checksums {
+		delete(m.urls, checksum)
+	}
+
+	return nil
+}
+
 func (m *MapDatabase) Close() error {
 	return nil
 }

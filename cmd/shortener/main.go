@@ -23,7 +23,7 @@ func main() {
 	}
 
 	if appConfig.DatabaseDsn != "" {
-		application.Storage = storage.NewPostgresDatabase(appConfig.DatabaseDsn)
+		application.Storage = storage.NewPostgresDatabase(appConfig.DatabaseDsn, false)
 	} else if appConfig.FileStoragePath != "" {
 		application.Storage = storage.NewFileStorage(appConfig.FileStoragePath)
 	} else {
